@@ -12,7 +12,7 @@ import { sshCommand } from "./commands/ssh.ts";
 import { ConfigError, loadConfig } from "./config.ts";
 import { SiteResolutionError } from "./resolve.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 
 function createClient(): KinstaClient {
   return new KinstaClient(loadConfig());

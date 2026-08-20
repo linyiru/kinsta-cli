@@ -1,6 +1,6 @@
 {
   "name": "kinsta-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Unofficial CLI for managing Kinsta-hosted WordPress sites: bulk health checks, log diagnostics, cache/PHP control, and wp-rocket PHP 8 remediation.",
   "type": "module",
   "bin": {
