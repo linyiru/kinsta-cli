@@ -1,0 +1,61 @@
+{
+  "name": "kinsta-cli",
+  "version": "0.1.0",
+  "description": "Unofficial CLI for managing Kinsta-hosted WordPress sites: bulk health checks, log diagnostics, cache/PHP control, and wp-rocket PHP 8 remediation.",
+  "type": "module",
+  "bin": {
+    "kinsta": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "rolldown -c rolldown.config.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src test",
+    "lint:fix": "oxlint --fix src test",
+    "format": "oxfmt src test *.ts",
+    "format:check": "oxfmt --check src test *.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "p-limit": "^7.3.1",
+    "picocolors": "^1.1.1",
+    "ssh2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/ssh2": "^1.15.5",
+    "msw": "^2.15.0",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
+    "rolldown": "^1.2.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "keywords": [
+    "kinsta",
+    "cli",
+    "wordpress",
+    "wp-rocket",
+    "hosting",
+    "devops",
+    "sftp",
+    "ssh"
+  ],
+  "license": "MIT",
+  "author": "linyiru",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linyiru/kinsta-cli.git"
+  }
+}
