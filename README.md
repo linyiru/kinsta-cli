@@ -71,6 +71,18 @@ param. wp-rocket is premium (WP-CLI cannot update it), so the safe remediation i
 it, restart PHP to clear OPcache, and flush the cache. `fix wp-rocket` automates exactly that and
 verifies the site recovers.
 
+## SSH host-key verification
+
+Kinsta issues a **password** for SSH/SFTP, so an unverified connection would let a network
+man-in-the-middle capture that password (and inject commands during `fix`). kinsta pins each
+host key on first use (TOFU): the first connection to a `host:port` records the key's
+`SHA256:` fingerprint, and every later connection must match or the connection is refused.
+
+- Pinned keys live in `~/.config/kinsta/known_hosts.json` (override with `KINSTA_KNOWN_HOSTS`,
+  or relocate via `XDG_CONFIG_HOME`).
+- Keys are pinned per `host:port`, since Kinsta containers share IPs across different ports.
+- If a key legitimately changes, delete its entry from the file and reconnect to re-pin.
+
 ## Development
 
 ```bash

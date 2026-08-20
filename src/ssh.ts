@@ -1,4 +1,5 @@
 import { Client } from "ssh2";
+import { decideHostKey, FileKnownHostsStore, type KnownHostsStore } from "./known-hosts.ts";
 
 export interface SshTarget {
   host: string;
@@ -24,7 +25,42 @@ export interface SshRunner {
 
 const READY_TIMEOUT_MS = 30_000;
 
-function connect(target: SshTarget): Promise<Client> {
+/**
+ * Build a ssh2 `hostVerifier` that pins host keys on first use (TOFU) and
+ * refuses to connect if a pinned key ever changes (possible MITM).
+ */
+function makeHostVerifier(
+  target: SshTarget,
+  store: KnownHostsStore,
+  onWarn: (message: string) => void,
+): (key: Buffer) => boolean {
+  const hostId = `${target.host}:${target.port}`;
+  return (key: Buffer): boolean => {
+    const decision = decideHostKey(store, hostId, key);
+    if (decision.status === "trusted-new") {
+      onWarn(
+        `Pinned new SSH host key for ${hostId} (${decision.fingerprint}). ` +
+          `It will be verified on future connections.`,
+      );
+    } else if (decision.status === "mismatch") {
+      onWarn(
+        `SSH host key mismatch for ${hostId}! ` +
+          `Expected ${decision.expected}, got ${decision.fingerprint}. ` +
+          `Refusing to connect (possible man-in-the-middle). ` +
+          `If this change is expected, remove the entry from the known_hosts file and retry.`,
+      );
+    }
+    return decision.accept;
+  };
+}
+
+const defaultStore: KnownHostsStore = new FileKnownHostsStore();
+
+function warn(message: string): void {
+  process.stderr.write(`kinsta: ${message}\n`);
+}
+
+function connect(target: SshTarget, store: KnownHostsStore = defaultStore): Promise<Client> {
   return new Promise((resolve, reject) => {
     const client = new Client();
     client
@@ -36,8 +72,10 @@ function connect(target: SshTarget): Promise<Client> {
         username: target.user,
         password: target.password,
         readyTimeout: READY_TIMEOUT_MS,
-        // Kinsta containers share IPs on different ports; skip host-key pinning.
-        // (ssh2 does not verify host keys unless a hostVerifier is supplied.)
+        // Kinsta containers share IPs on different ports, so we key the pinned
+        // host key on host:port and trust-on-first-use rather than a global
+        // known_hosts. Rejecting a changed key blocks MITM password capture.
+        hostVerifier: makeHostVerifier(target, store, warn),
       });
   });
 }
