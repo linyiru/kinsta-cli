@@ -1,0 +1,7 @@
+{
+  "environment": {
+    "container_info": {
+      "logs": "2026/08/20 17:58:07 [error] 89199#89199: *1145104 FastCGI sent in stderr: \"PHP message: PHP Fatal error:  Uncaught Error: Call to a member function to_block_attrs() on null in /www/charliesite_303/public/wp-content/plugins/jet-popup/includes/block-editor/manager.php:303\nStack trace:\n#0 /www/charliesite_303/public/wp-includes/class-wp-hook.php(324): JET_POPUP\\\\Block_Editor\\\\Manager->add_block_attrs()\n#1 {main}\n  thrown in /www/charliesite_303/public/wp-content/plugins/jet-popup/includes/block-editor/manager.php on line 303\" while reading response header from upstream"
+    }
+  }
+}

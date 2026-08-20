@@ -1,0 +1,7 @@
+{
+  "environment": {
+    "container_info": {
+      "logs": "2026/08/20 17:58:01 [error] 89199#89199: *1145100 FastCGI sent in stderr: \"PHP message: PHP Warning:  Undefined array key \\\"x\\\" in /www/bravosite_202/public/wp-content/themes/astra/functions.php on line 42\" while reading response header from upstream\n2026/08/20 17:58:07 [error] 89199#89199: *1145104 FastCGI sent in stderr: \"PHP message: PHP Fatal error:  Uncaught TypeError: substr(): Argument #1 ($string) must be of type string, int given in /www/bravosite_202/public/wp-content/plugins/wp-rocket/inc/ThirdParty/Plugins/CDN/Cloudflare.php:496\nStack trace:\n#0 /www/bravosite_202/public/wp-content/plugins/wp-rocket/inc/ThirdParty/Plugins/CDN/Cloudflare.php(496): substr()\n#1 {main}\n  thrown in /www/bravosite_202/public/wp-content/plugins/wp-rocket/inc/ThirdParty/Plugins/CDN/Cloudflare.php on line 496\" while reading response header from upstream\n2026/08/20 17:58:15 [error] 89199#89199: *1145106 FastCGI sent in stderr: \"PHP message: PHP Fatal error:  Uncaught TypeError: substr(): Argument #1 ($string) must be of type string, int given in /www/bravosite_202/public/wp-content/plugins/wp-rocket/inc/ThirdParty/Plugins/CDN/Cloudflare.php:496\" while reading response header from upstream"
+    }
+  }
+}

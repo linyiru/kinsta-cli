@@ -1,0 +1,7 @@
+{
+  "environment": {
+    "container_info": {
+      "logs": "2026/08/20 17:50:01 [error] 89199#89199: *1145000 FastCGI sent in stderr: \"PHP message: PHP Warning:  Undefined variable $foo in /www/alphasite_101/public/wp-content/themes/astra/header.php on line 10\" while reading response header from upstream\n2026/08/20 17:52:11 [error] 89199#89199: *1145010 FastCGI sent in stderr: \"PHP message: PHP Notice:  Function _load_textdomain_just_in_time was called incorrectly.\" while reading response header from upstream"
+    }
+  }
+}

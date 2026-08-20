@@ -1,0 +1,151 @@
+{
+  "company": {
+    "sites": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "alphasite",
+        "display_name": "Alpha Site",
+        "status": "live",
+        "environments": [
+          {
+            "id": "a1111111-1111-4111-8111-111111111111",
+            "name": "live",
+            "display_name": "Live",
+            "is_premium": true,
+            "is_blocked": false,
+            "id_edge_cache": "e1111111-1111-4111-8111-111111111111",
+            "cdn_cache_id": "c1111111-1111-4111-8111-111111111111",
+            "web_root": "/www/alphasite_101/public",
+            "wordpress_version": "6.6.2",
+            "domains": [
+              {
+                "id": "d1111111-1111-4111-8111-111111111111",
+                "name": "alphasite.kinsta.cloud",
+                "type": "live"
+              },
+              {
+                "id": "d1111111-1111-4111-8111-111111111112",
+                "name": "example-alpha.com",
+                "type": "live"
+              }
+            ],
+            "primaryDomain": {
+              "id": "d1111111-1111-4111-8111-111111111112",
+              "name": "example-alpha.com",
+              "type": "live"
+            },
+            "ssh_connection": { "ssh_port": "12001", "ssh_ip": { "external_ip": "203.0.113.10" } },
+            "container_info": {
+              "id": "f1111111-1111-4111-8111-111111111111",
+              "php_engine_version": "php8.1"
+            }
+          }
+        ]
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "name": "bravosite",
+        "display_name": "Bravo Site",
+        "status": "live",
+        "environments": [
+          {
+            "id": "a2222222-2222-4222-8222-222222222222",
+            "name": "live",
+            "display_name": "Live",
+            "is_premium": true,
+            "is_blocked": false,
+            "id_edge_cache": "e2222222-2222-4222-8222-222222222222",
+            "cdn_cache_id": "c2222222-2222-4222-8222-222222222222",
+            "web_root": "/www/bravosite_202/public",
+            "wordpress_version": "6.6.2",
+            "domains": [
+              {
+                "id": "d2222222-2222-4222-8222-222222222221",
+                "name": "bravosite.kinsta.cloud",
+                "type": "live"
+              },
+              {
+                "id": "d2222222-2222-4222-8222-222222222222",
+                "name": "example-bravo.com",
+                "type": "live"
+              }
+            ],
+            "primaryDomain": {
+              "id": "d2222222-2222-4222-8222-222222222222",
+              "name": "example-bravo.com",
+              "type": "live"
+            },
+            "ssh_connection": { "ssh_port": "12002", "ssh_ip": { "external_ip": "203.0.113.11" } },
+            "container_info": {
+              "id": "f2222222-2222-4222-8222-222222222222",
+              "php_engine_version": "php8.1"
+            }
+          }
+        ]
+      },
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "name": "charliesite",
+        "display_name": "Charlie Site",
+        "status": "live",
+        "environments": [
+          {
+            "id": "a3333333-3333-4333-8333-333333333331",
+            "name": "staging",
+            "display_name": "Staging",
+            "is_premium": false,
+            "is_blocked": false,
+            "cdn_cache_id": "c3333333-3333-4333-8333-333333333331",
+            "web_root": "/www/charliesite_303/staging",
+            "wordpress_version": "6.6.2",
+            "domains": [
+              {
+                "id": "d3333333-3333-4333-8333-333333333331",
+                "name": "staging-charliesite.kinsta.cloud",
+                "type": "live"
+              }
+            ],
+            "primaryDomain": {
+              "id": "d3333333-3333-4333-8333-333333333331",
+              "name": "staging-charliesite.kinsta.cloud",
+              "type": "live"
+            },
+            "ssh_connection": { "ssh_port": "12003", "ssh_ip": { "external_ip": "203.0.113.12" } },
+            "container_info": {
+              "id": "f3333333-3333-4333-8333-333333333331",
+              "php_engine_version": "php8.2"
+            }
+          },
+          {
+            "id": "a3333333-3333-4333-8333-333333333333",
+            "name": "live",
+            "display_name": "Live",
+            "is_premium": false,
+            "is_blocked": false,
+            "id_edge_cache": "e3333333-3333-4333-8333-333333333333",
+            "cdn_cache_id": "c3333333-3333-4333-8333-333333333333",
+            "web_root": "/www/charliesite_303/public",
+            "wordpress_version": "6.6.2",
+            "domains": [
+              {
+                "id": "d3333333-3333-4333-8333-333333333333",
+                "name": "example-charlie.com",
+                "type": "live"
+              }
+            ],
+            "primaryDomain": {
+              "id": "d3333333-3333-4333-8333-333333333333",
+              "name": "example-charlie.com",
+              "type": "live"
+            },
+            "ssh_connection": { "ssh_port": "12004", "ssh_ip": { "external_ip": "203.0.113.12" } },
+            "container_info": {
+              "id": "f3333333-3333-4333-8333-333333333333",
+              "php_engine_version": "php8.2"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

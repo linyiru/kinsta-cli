@@ -1,0 +1,5 @@
+{
+  "operation_id": "container:restart-php-a2222222-2222-4222-8222-222222222222",
+  "message": "Restarting PHP in progress. Use the operation_id to check the status.",
+  "status": 202
+}
