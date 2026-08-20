@@ -1,6 +1,11 @@
 # kinsta-cli
 
-> Unofficial CLI for managing [Kinsta](https://kinsta.com)-hosted WordPress sites — bulk health checks, log diagnostics, cache/PHP control, and one-shot **wp-rocket PHP 8** remediation.
+[![npm version](https://img.shields.io/npm/v/kinsta-cli.svg)](https://www.npmjs.com/package/kinsta-cli)
+[![npm downloads](https://img.shields.io/npm/dm/kinsta-cli.svg)](https://www.npmjs.com/package/kinsta-cli)
+[![node](https://img.shields.io/node/v/kinsta-cli.svg)](https://www.npmjs.com/package/kinsta-cli)
+[![license](https://img.shields.io/npm/l/kinsta-cli.svg)](./LICENSE)
+
+> Unofficial CLI for managing [Kinsta](https://kinsta.com)-hosted WordPress sites — bulk health checks, log diagnostics, traffic analytics, cache/PHP control, WP-CLI over the API, and one-shot **wp-rocket PHP 8** remediation.
 
 The binary is installed as `kinsta`.
 
