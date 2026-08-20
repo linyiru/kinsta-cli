@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "topClientIPs",
+      "data": [
+        { "ip": "203.0.113.5", "value": "320" },
+        { "ip": "203.0.113.42", "value": "180" },
+        { "ip": "198.51.100.7", "value": "95" }
+      ]
+    }
+  }
+}

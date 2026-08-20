@@ -1,0 +1,18 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "uniqueip",
+      "data": [
+        {
+          "name": "uniqueip",
+          "total": 1234,
+          "dataset": [
+            { "key": "2025-08-18T00:00:00.000Z", "value": "400" },
+            { "key": "2025-08-19T00:00:00.000Z", "value": "500" },
+            { "key": "2025-08-20T00:00:00.000Z", "value": "334" }
+          ]
+        }
+      ]
+    }
+  }
+}

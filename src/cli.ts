@@ -2,6 +2,8 @@ import { Command } from "commander";
 import pc from "picocolors";
 import { KinstaApiError, KinstaClient } from "./api.ts";
 import type { HealthCategory } from "./analyze.ts";
+import { METRIC_NAMES, UnknownMetricError } from "./analytics.ts";
+import { analyticsCommand, AnalyticsUsageError } from "./commands/analytics.ts";
 import { cacheClearCommand } from "./commands/cache.ts";
 import { diagnoseCommand } from "./commands/diagnose.ts";
 import { fixWpRocketCommand } from "./commands/fix.ts";
@@ -26,6 +28,10 @@ function handleError(err: unknown): never {
   if (err instanceof SiteResolutionError) {
     console.error(pc.red(err.message));
     for (const site of err.matches) console.error(pc.dim(`  - ${site.name}`));
+    process.exit(2);
+  }
+  if (err instanceof UnknownMetricError || err instanceof AnalyticsUsageError) {
+    console.error(pc.red(err.message));
     process.exit(2);
   }
   if (err instanceof KinstaApiError) {
@@ -60,6 +66,34 @@ function buildProgram(): Command {
     .action(async (opts: { json?: boolean; only?: HealthCategory; concurrency?: number }) => {
       await healthCommand(createClient(), opts);
     });
+
+  program
+    .command("analytics")
+    .argument("[site]", "site name or domain (omit with --all)")
+    .description("Traffic & usage analytics for a site (visits, bandwidth, top-N, etc.)")
+    .option("-m, --metric <name...>", `metric(s): ${METRIC_NAMES.join(", ")}, or "all"`)
+    .option("-s, --span <span>", "time span: 24_hours|7_days|30_days|60_days", "7_days")
+    .option("--from <date>", "custom range start (YYYY-MM-DD); requires --to")
+    .option("--to <date>", "custom range end (YYYY-MM-DD); requires --from")
+    .option("-n, --top <n>", "rows to show for top-N metrics", (v) => Number(v))
+    .option("--json", "output raw JSON")
+    .option("--all", "run across every site (compact per-site summary)")
+    .action(
+      async (
+        site: string | undefined,
+        opts: {
+          metric?: string[];
+          span?: string;
+          from?: string;
+          to?: string;
+          top?: number;
+          json?: boolean;
+          all?: boolean;
+        },
+      ) => {
+        await analyticsCommand(createClient(), site, opts);
+      },
+    );
 
   program
     .command("diagnose")

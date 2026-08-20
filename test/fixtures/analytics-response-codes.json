@@ -1,0 +1,30 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "responseCode",
+      "data": [
+        {
+          "response_code": "200",
+          "data": [
+            { "key": "2025-08-19T00:00:00.000Z", "value": "900" },
+            { "key": "2025-08-20T00:00:00.000Z", "value": "1000" }
+          ]
+        },
+        {
+          "response_code": "404",
+          "data": [
+            { "key": "2025-08-19T00:00:00.000Z", "value": "20" },
+            { "key": "2025-08-20T00:00:00.000Z", "value": "15" }
+          ]
+        },
+        {
+          "response_code": "500",
+          "data": [
+            { "key": "2025-08-19T00:00:00.000Z", "value": "3" },
+            { "key": "2025-08-20T00:00:00.000Z", "value": "2" }
+          ]
+        }
+      ]
+    }
+  }
+}

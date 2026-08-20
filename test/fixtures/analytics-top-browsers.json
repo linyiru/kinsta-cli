@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "browsers",
+      "data": [
+        { "name": "Chrome", "views": "800" },
+        { "name": "Safari", "views": "300" },
+        { "name": "Firefox", "views": "120" }
+      ]
+    }
+  }
+}

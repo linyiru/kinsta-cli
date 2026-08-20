@@ -1,0 +1,18 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "diskSpaceUsage",
+      "data": [
+        {
+          "name": "diskSpaceUsage",
+          "total": 2147483648,
+          "dataset": [
+            { "key": "2025-08-18T00:00:00.000Z", "value": "2147483648" },
+            { "key": "2025-08-19T00:00:00.000Z", "value": "2147483648" },
+            { "key": "2025-08-20T00:00:00.000Z", "value": "2147483648" }
+          ]
+        }
+      ]
+    }
+  }
+}

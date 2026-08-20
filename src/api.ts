@@ -1,4 +1,4 @@
-import type { Environment, Site, SshConfig } from "./types.ts";
+import type { AnalyticsResponse, Environment, Site, SshConfig, UsageSummary } from "./types.ts";
 
 export const DEFAULT_BASE_URL = "https://api.kinsta.com/v2";
 
@@ -231,5 +231,42 @@ export class KinstaClient {
     });
     const raw = data.environment?.container_info?.logs ?? "";
     return raw.split("\n").filter((line) => line.trim().length > 0);
+  }
+
+  /**
+   * GET /sites/environments/{env_id}/analytics/{metric} — traffic analytics.
+   * `range` is either `{ time_span }` or a custom `{ from, to }` window.
+   */
+  async getAnalytics<T>(
+    envId: string,
+    metric: string,
+    range: Record<string, string> = {},
+  ): Promise<AnalyticsResponse<T>> {
+    const data = await this.request<{
+      analytics: { analytics_response: AnalyticsResponse<T> };
+    }>(`/sites/environments/${envId}/analytics/${metric}`, {
+      query: { company_id: this.companyId, ...range },
+    });
+    return data.analytics?.analytics_response ?? { key: "", data: [] };
+  }
+
+  /** GET /sites/{site_id}/usage/{kind}/this-month — metered plan usage. */
+  async getUsage(siteId: string): Promise<UsageSummary> {
+    const [visits, bandwidth, cdn] = await Promise.all([
+      this.request<{ site: { this_month_usage?: { visits?: number } } }>(
+        `/sites/${siteId}/usage/visits/this-month`,
+      ),
+      this.request<{ site: { this_month_usage?: { bandwidth?: number } } }>(
+        `/sites/${siteId}/usage/bandwidth/this-month`,
+      ),
+      this.request<{ site: { this_month_cdn_usage?: { bandwidth?: number } } }>(
+        `/sites/${siteId}/usage/cdn-bandwidth/this-month`,
+      ),
+    ]);
+    return {
+      visits: visits.site?.this_month_usage?.visits ?? 0,
+      bandwidth: bandwidth.site?.this_month_usage?.bandwidth ?? 0,
+      cdnBandwidth: cdn.site?.this_month_cdn_usage?.bandwidth ?? 0,
+    };
   }
 }

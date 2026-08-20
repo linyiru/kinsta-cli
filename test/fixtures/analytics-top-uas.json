@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "user_agents",
+      "data": [
+        { "name": "Mozilla/5.0 (compatible)", "views": "700" },
+        { "name": "Mobile Safari", "views": "250" },
+        { "name": "curl/8.0", "views": "40" }
+      ]
+    }
+  }
+}

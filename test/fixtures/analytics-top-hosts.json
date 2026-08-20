@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "hosts",
+      "data": [
+        { "name": "example-alpha.com", "views": "900" },
+        { "name": "www.example-alpha.com", "views": "300" },
+        { "name": "example-alpha.kinsta.cloud", "views": "34" }
+      ]
+    }
+  }
+}

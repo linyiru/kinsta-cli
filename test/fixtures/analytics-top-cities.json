@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "cities",
+      "data": [
+        { "name": "New York", "views": "180" },
+        { "name": "Tokyo", "views": "150" },
+        { "name": "Berlin", "views": "90" }
+      ]
+    }
+  }
+}

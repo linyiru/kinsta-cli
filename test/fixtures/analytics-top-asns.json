@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "asns",
+      "data": [
+        { "name": "AS64500 Example Telecom", "views": "300" },
+        { "name": "AS64501 Example Cloud", "views": "210" },
+        { "name": "AS64502 Example ISP", "views": "95" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "cdnBandwidth",
+      "data": [
+        {
+          "name": "cdnBandwidth",
+          "total": 1610612736,
+          "dataset": [
+            { "key": "2025-08-18T00:00:00.000Z", "value": "536870912" },
+            { "key": "2025-08-19T00:00:00.000Z", "value": "536870912" },
+            { "key": "2025-08-20T00:00:00.000Z", "value": "536870912" }
+          ]
+        }
+      ]
+    }
+  }
+}

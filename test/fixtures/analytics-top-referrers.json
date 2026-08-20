@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "referrers",
+      "data": [
+        { "name": "google.com", "views": "500" },
+        { "name": "example-partner.com", "views": "120" },
+        { "name": "t.co", "views": "60" }
+      ]
+    }
+  }
+}

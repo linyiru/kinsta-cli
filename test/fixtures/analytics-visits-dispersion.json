@@ -1,0 +1,30 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "dispersion",
+      "data": [
+        {
+          "name": "desktop",
+          "dataset": [
+            { "date": "2025-08-19T00:00:00.000Z", "percent": "62.50" },
+            { "date": "2025-08-20T00:00:00.000Z", "percent": "60.10" }
+          ]
+        },
+        {
+          "name": "mobile",
+          "dataset": [
+            { "date": "2025-08-19T00:00:00.000Z", "percent": "35.00" },
+            { "date": "2025-08-20T00:00:00.000Z", "percent": "37.40" }
+          ]
+        },
+        {
+          "name": "tablet",
+          "dataset": [
+            { "date": "2025-08-19T00:00:00.000Z", "percent": "2.50" },
+            { "date": "2025-08-20T00:00:00.000Z", "percent": "2.50" }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -52,3 +52,52 @@ export interface ResolvedSite {
   site: Site;
   env: Environment;
 }
+
+/** Generic wrapper returned by the `analytics/*` endpoints. */
+export interface AnalyticsResponse<T> {
+  key: string;
+  data: T[];
+}
+
+export interface AnalyticsPoint {
+  key: string;
+  value: string;
+}
+
+/** visits / bandwidth / cdn-bandwidth / diskspace shape. */
+export interface AnalyticsSeries {
+  name: string;
+  total: number;
+  dataset: AnalyticsPoint[];
+}
+
+/** top-countries / cities / referrers / browsers / uas / asns / hosts shape. */
+export interface AnalyticsTopEntry {
+  name: string;
+  views: string;
+}
+
+/** top-client-ips shape (ip/value rather than name/views). */
+export interface AnalyticsTopIpEntry {
+  ip: string;
+  value: string;
+}
+
+/** response-codes shape. */
+export interface AnalyticsResponseCodeEntry {
+  response_code: string;
+  data: AnalyticsPoint[];
+}
+
+/** visits-dispersion shape (device split over time). */
+export interface AnalyticsDispersionEntry {
+  name: string;
+  dataset: { date: string; percent: string }[];
+}
+
+/** This-month plan usage across the three metered dimensions. */
+export interface UsageSummary {
+  visits: number;
+  bandwidth: number;
+  cdnBandwidth: number;
+}

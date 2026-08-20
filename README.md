@@ -31,6 +31,7 @@ export KINSTA_COMPANY_ID=...
 ```
 kinsta sites                     List all sites (name, domain, status, PHP, live env id)
 kinsta health                    Bulk homepage health check (cache-busted) across all sites
+kinsta analytics <site>          Traffic & usage analytics (visits, bandwidth, top-N, response codes)
 kinsta diagnose <site>           Read the error log and identify the likely cause of a fatal
 kinsta cache clear <site>        Clear the site cache (--cdn, --edge for those layers)
 kinsta php restart <site>        Restart PHP (clears OPcache)
@@ -60,7 +61,26 @@ kinsta fix wp-rocket --all --dry-run
 
 # Run a one-off command over SSH
 kinsta ssh example.com --exec "wp plugin list --status=active"
+
+# Traffic dashboard for one site (default metrics, last 7 days)
+kinsta analytics example.com
+
+# Pick specific metrics and a window
+kinsta analytics example.com -m visits response-codes top-countries -s 30_days
+
+# Every available metric, custom date range, as JSON
+kinsta analytics example.com -m all --from 2025-08-01 --to 2025-08-20 --json
+
+# Fleet-wide one-line summary per site
+kinsta analytics --all -m usage response-codes
 ```
+
+### Analytics metrics
+
+`usage` (this-month plan usage), `visits`, `bandwidth`, `cdn-bandwidth`, `disk-space`,
+`response-codes`, `top-countries`, `top-cities`, `top-client-ips`, `top-referrers`,
+`top-browsers`, `top-user-agents`, `top-asns`, `top-hosts`, `visits-dispersion` — or `all`.
+Windows: `--span 24_hours|7_days|30_days|60_days` (default `7_days`) or `--from`/`--to`.
 
 ## Why `fix wp-rocket`?
 

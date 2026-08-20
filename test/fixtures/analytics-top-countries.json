@@ -1,0 +1,12 @@
+{
+  "analytics": {
+    "analytics_response": {
+      "key": "countries",
+      "data": [
+        { "name": "United States", "views": "620" },
+        { "name": "Japan", "views": "410" },
+        { "name": "Germany", "views": "204" }
+      ]
+    }
+  }
+}
