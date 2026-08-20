@@ -36,6 +36,7 @@ kinsta diagnose <site>           Read the error log and identify the likely caus
 kinsta cache clear <site>        Clear the site cache (--cdn, --edge for those layers)
 kinsta php restart <site>        Restart PHP (clears OPcache)
 kinsta ssh <site>                Open an SSH shell (--info to print details, --exec to run one command)
+kinsta wp <site> <command...>    Run a single WP-CLI command via the Kinsta API (no SSH)
 kinsta fix wp-rocket [site]      Deactivate the wp-rocket PHP 8 fatal, restart PHP, clear cache
 ```
 
@@ -61,6 +62,11 @@ kinsta fix wp-rocket --all --dry-run
 
 # Run a one-off command over SSH
 kinsta ssh example.com --exec "wp plugin list --status=active"
+
+# Run a single WP-CLI command via the API (no SSH); --wait polls until it finishes
+kinsta wp example.com core version --wait
+# quote the command when it has its own flags
+kinsta wp example.com "plugin deactivate wp-rocket --skip-plugins --skip-themes"
 
 # Traffic dashboard for one site (default metrics, last 7 days)
 kinsta analytics example.com
@@ -90,6 +96,22 @@ fatal `TypeError` on PHP 8. Because wp-rocket caches HTML, the homepage can retu
 param. wp-rocket is premium (WP-CLI cannot update it), so the safe remediation is to deactivate
 it, restart PHP to clear OPcache, and flush the cache. `fix wp-rocket` automates exactly that and
 verifies the site recovers.
+
+By default `fix wp-rocket` remediates over the **Kinsta API** (`kinsta wp` under the hood), so no
+SSH connection — and therefore no SSH password — is involved. Because the API accepts only a
+single `wp` command (no shell chaining or `rm`), it deactivates wp-rocket and sets `WP_CACHE`
+false to stop WordPress loading the broken `advanced-cache.php` drop-in. Pass `--wait` to poll each
+operation to completion before the homepage is re-checked, or `--ssh` to fall back to the original
+SSH + WP-CLI flow (which also removes the drop-in outright).
+
+### `kinsta wp`
+
+Runs one WP-CLI command through the Kinsta API. The API accepts a single `wp ...` invocation with
+letters, digits and `_-./:=@'` only — no shell chaining (`&&`, `;`, `|`), quotes, or redirection —
+and runs it **asynchronously without returning stdout**. The command prints the operation id;
+`--wait` polls until it finishes, `--json` emits machine-readable output. Quote the WP-CLI command
+when it carries its own flags (e.g. `kinsta wp <site> "plugin deactivate wp-rocket --skip-plugins"`).
+Use `kinsta ssh --exec` when you need the command's output.
 
 ## SSH host-key verification
 

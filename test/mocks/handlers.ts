@@ -21,7 +21,9 @@ import error404 from "../fixtures/error-404.json";
 import logsClean from "../fixtures/logs-clean.json";
 import logsJetPopup from "../fixtures/logs-jet-popup.json";
 import logsWpRocket from "../fixtures/logs-wp-rocket.json";
+import operationSuccess from "../fixtures/operation-success.json";
 import restartPhp from "../fixtures/restart-php.json";
+import runWpCli from "../fixtures/run-wp-cli.json";
 import sites from "../fixtures/sites.json";
 import sshConfig from "../fixtures/ssh-config.json";
 import sshPassword from "../fixtures/ssh-password.json";
@@ -123,4 +125,15 @@ export const handlers = [
     `${BASE}/sites/edge-caching/clear`,
     ({ request }) => requireAuth(request) ?? HttpResponse.json(edgeClear, { status: 202 }),
   ),
+
+  http.post(
+    `${BASE}/sites/environments/:envId/run-wp-cli-command`,
+    ({ request }) => requireAuth(request) ?? HttpResponse.json(runWpCli, { status: 202 }),
+  ),
+
+  http.get(`${BASE}/operations/:operationId`, ({ request }) => {
+    const unauth = requireAuth(request);
+    if (unauth) return unauth;
+    return HttpResponse.json(operationSuccess, { status: 200 });
+  }),
 ];

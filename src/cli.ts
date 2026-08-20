@@ -11,8 +11,10 @@ import { healthCommand } from "./commands/health.ts";
 import { phpRestartCommand } from "./commands/php.ts";
 import { sitesCommand } from "./commands/sites.ts";
 import { sshCommand } from "./commands/ssh.ts";
+import { wpCliCommand } from "./commands/wp.ts";
 import { ConfigError, loadConfig } from "./config.ts";
 import { SiteResolutionError } from "./resolve.ts";
+import { WpCommandError } from "./wpcli.ts";
 
 const VERSION = "0.2.0";
 
@@ -31,6 +33,10 @@ function handleError(err: unknown): never {
     process.exit(2);
   }
   if (err instanceof UnknownMetricError || err instanceof AnalyticsUsageError) {
+    console.error(pc.red(err.message));
+    process.exit(2);
+  }
+  if (err instanceof WpCommandError) {
     console.error(pc.red(err.message));
     process.exit(2);
   }
@@ -134,6 +140,19 @@ function buildProgram(): Command {
       process.exitCode = await sshCommand(createClient(), site, opts);
     });
 
+  program
+    .command("wp")
+    .argument("<site>", "site name or domain")
+    .argument("<command...>", 'WP-CLI command, e.g. "core version" or wp core version')
+    .description("Run a single WP-CLI command via the Kinsta API (no SSH)")
+    .option("--wait", "poll the operation until it finishes")
+    .option("--json", "output JSON")
+    .action(async (site: string, command: string[], opts: { wait?: boolean; json?: boolean }) => {
+      const joined = command.join(" ").trim();
+      const wpCommand = joined.startsWith("wp ") || joined === "wp" ? joined : `wp ${joined}`;
+      await wpCliCommand(createClient(), site, wpCommand, opts);
+    });
+
   const fix = program.command("fix").description("Automated remediations");
   fix
     .command("wp-rocket")
@@ -142,10 +161,18 @@ function buildProgram(): Command {
     .option("--all", "scan and fix every affected site")
     .option("--dry-run", "report what would change without making changes")
     .option("--force", "fix even if no wp-rocket fatal is detected")
+    .option("--ssh", "remediate over SSH instead of the Kinsta API")
+    .option("--wait", "wait for each API operation to finish before verifying")
     .action(
       async (
         site: string | undefined,
-        opts: { all?: boolean; dryRun?: boolean; force?: boolean },
+        opts: {
+          all?: boolean;
+          dryRun?: boolean;
+          force?: boolean;
+          ssh?: boolean;
+          wait?: boolean;
+        },
       ) => {
         await fixWpRocketCommand(createClient(), site, opts);
       },

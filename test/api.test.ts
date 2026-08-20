@@ -123,4 +123,59 @@ describe("KinstaClient (replayed against recorded fixtures)", () => {
     const results = await Promise.all([client.listSites(), client.listSites(), client.listSites()]);
     expect(results.every((r) => r.length === 3)).toBe(true);
   });
+
+  it("runs a WP-CLI command and returns the operation id", async () => {
+    let body: unknown;
+    server.use(
+      http.post(`${BASE}/sites/environments/:envId/run-wp-cli-command`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ operation_id: "op-123", status: 202 }, { status: 202 });
+      }),
+    );
+    const id = await makeClient().runWpCli("env-1", "wp core version");
+    expect(id).toBe("op-123");
+    expect(body).toEqual({ wp_command: "wp core version" });
+  });
+
+  it("polls an operation until it leaves the in-progress state", async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${BASE}/operations/:operationId`, () => {
+        calls += 1;
+        if (calls < 3) {
+          return HttpResponse.json({ status: 202, message: "in progress" }, { status: 202 });
+        }
+        return HttpResponse.json({ status: 200, message: "done" }, { status: 200 });
+      }),
+    );
+    const result = await makeClient().waitForOperation("op-1", { intervalMs: 0, maxAttempts: 10 });
+    expect(result.status).toBe(200);
+    expect(result.timedOut).toBe(false);
+    expect(calls).toBe(3);
+  });
+
+  it("treats a 404 operation as still pending while polling", async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${BASE}/operations/:operationId`, () => {
+        calls += 1;
+        if (calls < 2) return HttpResponse.json({ message: "not found" }, { status: 404 });
+        return HttpResponse.json({ status: 200, message: "done" }, { status: 200 });
+      }),
+    );
+    const result = await makeClient().waitForOperation("op-1", { intervalMs: 0, maxAttempts: 5 });
+    expect(result.status).toBe(200);
+    expect(result.timedOut).toBe(false);
+  });
+
+  it("reports a timeout when the operation never finishes", async () => {
+    server.use(
+      http.get(`${BASE}/operations/:operationId`, () =>
+        HttpResponse.json({ status: 202, message: "in progress" }, { status: 202 }),
+      ),
+    );
+    const result = await makeClient().waitForOperation("op-1", { intervalMs: 0, maxAttempts: 3 });
+    expect(result.timedOut).toBe(true);
+    expect(result.status).toBe(202);
+  });
 });

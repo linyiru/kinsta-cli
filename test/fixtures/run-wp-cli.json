@@ -1,0 +1,5 @@
+{
+  "operation_id": "cli:run-wp-cli-a2222222-2222-4222-8222-222222222222",
+  "message": "Running WP-CLI command in progress. Use the operation_id to check the status.",
+  "status": 202
+}

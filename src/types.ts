@@ -101,3 +101,9 @@ export interface UsageSummary {
   bandwidth: number;
   cdnBandwidth: number;
 }
+
+/** Response of GET /operations/{operation_id} (status 202 = still running). */
+export interface OperationStatus {
+  status: number;
+  message: string;
+}

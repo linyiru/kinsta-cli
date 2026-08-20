@@ -4,12 +4,17 @@ import { diagnoseLogs } from "../analyze.ts";
 import { pickLiveEnv, primaryDomainOf, resolveSite } from "../resolve.ts";
 import { Ssh2Runner, type SshRunner, type SshTarget } from "../ssh.ts";
 import type { Environment, Site } from "../types.ts";
+import { WP_ROCKET_REMEDIATION_COMMANDS } from "../wpcli.ts";
 import { checkHealth } from "./health.ts";
 
 export interface FixWpRocketOptions {
   all?: boolean;
   dryRun?: boolean;
   force?: boolean;
+  /** Use SSH + WP-CLI instead of the Kinsta API (the default). */
+  ssh?: boolean;
+  /** Poll each API operation to completion before verifying. */
+  wait?: boolean;
   runner?: SshRunner;
   fetch?: typeof globalThis.fetch;
 }
@@ -23,8 +28,11 @@ export interface FixResult {
   note?: string;
 }
 
-/** Deactivate wp-rocket, drop its advanced-cache.php drop-in, print a marker. */
-const REMEDIATION_CMD =
+/**
+ * SSH remediation: deactivate wp-rocket, drop its advanced-cache.php drop-in,
+ * and print a marker (used only with --ssh).
+ */
+const SSH_REMEDIATION_CMD =
   'cd "$HOME/public" && ' +
   "wp plugin deactivate wp-rocket --skip-plugins --skip-themes 2>&1; " +
   'rm -f "$HOME/public/wp-content/advanced-cache.php"; ' +
@@ -43,6 +51,102 @@ async function confirmWpRocket(client: KinstaClient, env: Environment): Promise<
   }
 }
 
+async function verifyHomepage(
+  client: KinstaClient,
+  site: Site,
+  env: Environment,
+  opts: FixWpRocketOptions,
+): Promise<number | undefined> {
+  const domain = primaryDomainOf(env);
+  if (!domain) return undefined;
+  const [result] = await checkHealth(
+    [{ name: site.name, domain, siteId: site.id, envId: env.id }],
+    { fetch: opts.fetch, concurrency: 1 },
+  );
+  return result?.status;
+}
+
+/** Default remediation via the Kinsta API (no SSH; closes the MITM concern). */
+async function fixOneApi(
+  client: KinstaClient,
+  site: Site,
+  env: Environment,
+  opts: FixWpRocketOptions,
+): Promise<FixResult> {
+  const base = { name: site.name, envId: env.id };
+
+  const operationIds: string[] = [];
+  for (const cmd of WP_ROCKET_REMEDIATION_COMMANDS) {
+    operationIds.push(await client.runWpCli(env.id, cmd));
+  }
+  // Clear OPcache so the deactivation takes effect, then flush the page cache.
+  operationIds.push(await client.restartPhp(env.id));
+  operationIds.push(await client.clearCache(env.id));
+
+  if (opts.wait) {
+    for (const id of operationIds) {
+      try {
+        await client.waitForOperation(id);
+      } catch {
+        // Best-effort: the homepage probe below is the authoritative check.
+      }
+    }
+  }
+
+  const verifiedStatus = await verifyHomepage(client, site, env, opts);
+  const ok = verifiedStatus === undefined || verifiedStatus < 500;
+  return {
+    ...base,
+    ok,
+    action: "wp-rocket deactivated (WP_CACHE off), PHP restarted, cache cleared",
+    verifiedStatus,
+    note: ok ? undefined : "still returning an error after fix",
+  };
+}
+
+/** Fallback remediation over SSH + WP-CLI (--ssh). */
+async function fixOneSsh(
+  client: KinstaClient,
+  site: Site,
+  env: Environment,
+  opts: FixWpRocketOptions,
+): Promise<FixResult> {
+  const base = { name: site.name, envId: env.id };
+
+  const runner = opts.runner ?? new Ssh2Runner();
+  const config = await client.getSshConfig(site.id, env.id);
+  const password = await client.getSshPassword(env.id);
+  const target: SshTarget = {
+    host: config.host,
+    port: Number(config.port),
+    user: config.user,
+    password,
+  };
+
+  const ssh = await runner.run(target, SSH_REMEDIATION_CMD);
+  if (!ssh.stdout.includes("KINSTA_FIX_DONE")) {
+    return {
+      ...base,
+      ok: false,
+      action: "ssh remediation failed",
+      note: (ssh.stderr || ssh.stdout).trim().split("\n").slice(-1)[0],
+    };
+  }
+
+  await client.restartPhp(env.id);
+  await client.clearCache(env.id);
+
+  const verifiedStatus = await verifyHomepage(client, site, env, opts);
+  const ok = verifiedStatus === undefined || verifiedStatus < 500;
+  return {
+    ...base,
+    ok,
+    action: "wp-rocket deactivated, PHP restarted, cache cleared (ssh)",
+    verifiedStatus,
+    note: ok ? undefined : "still returning an error after fix",
+  };
+}
+
 async function fixOne(
   client: KinstaClient,
   site: Site,
@@ -55,48 +159,18 @@ async function fixOne(
     return { ...base, ok: true, action: "dry-run (no changes made)" };
   }
 
-  const runner = opts.runner ?? new Ssh2Runner();
-  const config = await client.getSshConfig(site.id, env.id);
-  const password = await client.getSshPassword(env.id);
-  const target: SshTarget = {
-    host: config.host,
-    port: Number(config.port),
-    user: config.user,
-    password,
-  };
-
-  const ssh = await runner.run(target, REMEDIATION_CMD);
-  if (!ssh.stdout.includes("KINSTA_FIX_DONE")) {
+  try {
+    return opts.ssh
+      ? await fixOneSsh(client, site, env, opts)
+      : await fixOneApi(client, site, env, opts);
+  } catch (err) {
     return {
       ...base,
       ok: false,
-      action: "ssh remediation failed",
-      note: (ssh.stderr || ssh.stdout).trim().split("\n").slice(-1)[0],
+      action: opts.ssh ? "ssh remediation failed" : "api remediation failed",
+      note: err instanceof Error ? err.message : String(err),
     };
   }
-
-  // Clear OPcache so the deactivation takes effect, then flush the page cache.
-  await client.restartPhp(env.id);
-  await client.clearCache(env.id);
-
-  const domain = primaryDomainOf(env);
-  let verifiedStatus: number | undefined;
-  if (domain) {
-    const [result] = await checkHealth(
-      [{ name: site.name, domain, siteId: site.id, envId: env.id }],
-      { fetch: opts.fetch, concurrency: 1 },
-    );
-    verifiedStatus = result?.status;
-  }
-
-  const ok = verifiedStatus === undefined || verifiedStatus < 500;
-  return {
-    ...base,
-    ok,
-    action: "wp-rocket deactivated, PHP restarted, cache cleared",
-    verifiedStatus,
-    note: ok ? undefined : "still returning an error after fix",
-  };
 }
 
 async function selectTargets(

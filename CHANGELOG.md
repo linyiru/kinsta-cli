@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `kinsta wp <site> <command...>` — run a single WP-CLI command through the
+  Kinsta API without SSH. Supports `--wait` (poll the operation to completion)
+  and `--json`. The API runs commands asynchronously and returns no stdout.
+
+### Changed
+
+- `fix wp-rocket` now remediates over the Kinsta API by default (no SSH
+  password exchange, closing the man-in-the-middle exposure). It deactivates
+  wp-rocket and sets `WP_CACHE` false to stop the broken `advanced-cache.php`
+  drop-in from loading. Added `--wait` to await each operation before
+  verifying, and `--ssh` to fall back to the original SSH + WP-CLI flow.
+
 ## [0.2.0] - 2026-08-20
 
 ### Added

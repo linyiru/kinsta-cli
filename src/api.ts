@@ -1,4 +1,11 @@
-import type { AnalyticsResponse, Environment, Site, SshConfig, UsageSummary } from "./types.ts";
+import type {
+  AnalyticsResponse,
+  Environment,
+  OperationStatus,
+  Site,
+  SshConfig,
+  UsageSummary,
+} from "./types.ts";
 
 export const DEFAULT_BASE_URL = "https://api.kinsta.com/v2";
 
@@ -268,5 +275,51 @@ export class KinstaClient {
       bandwidth: bandwidth.site?.this_month_usage?.bandwidth ?? 0,
       cdnBandwidth: cdn.site?.this_month_cdn_usage?.bandwidth ?? 0,
     };
+  }
+
+  /**
+   * POST /sites/environments/{env_id}/run-wp-cli-command — runs a single
+   * `wp ...` command asynchronously and returns its operation id. The API does
+   * not return command output; poll {@link waitForOperation} for completion.
+   */
+  async runWpCli(envId: string, wpCommand: string): Promise<string> {
+    const data = await this.request<{ operation_id: string }>(
+      `/sites/environments/${envId}/run-wp-cli-command`,
+      { method: "POST", body: { wp_command: wpCommand } },
+    );
+    return data.operation_id;
+  }
+
+  /** GET /operations/{operation_id} — status 202 means still in progress. */
+  async getOperation(operationId: string): Promise<OperationStatus> {
+    return this.request<OperationStatus>(`/operations/${operationId}`);
+  }
+
+  /**
+   * Poll an operation until it leaves the in-progress (202) state or attempts
+   * are exhausted. A freshly-created operation may 404 briefly, which is
+   * treated as still-pending.
+   */
+  async waitForOperation(
+    operationId: string,
+    opts: { intervalMs?: number; maxAttempts?: number } = {},
+  ): Promise<OperationStatus & { timedOut: boolean }> {
+    const intervalMs = opts.intervalMs ?? 3000;
+    const maxAttempts = opts.maxAttempts ?? 40;
+    let last: OperationStatus = { status: 202, message: "Operation in progress" };
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        last = await this.getOperation(operationId);
+      } catch (err) {
+        if (err instanceof KinstaApiError && err.status === 404) {
+          await this.sleep(intervalMs);
+          continue;
+        }
+        throw err;
+      }
+      if (last.status !== 202) return { ...last, timedOut: false };
+      await this.sleep(intervalMs);
+    }
+    return { ...last, timedOut: true };
   }
 }
