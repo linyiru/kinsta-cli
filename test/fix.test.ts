@@ -17,9 +17,12 @@ function makeClient() {
 }
 
 const okFetch = (() =>
-  Promise.resolve(new Response(null, { status: 200 }))) as typeof globalThis.fetch;
+  Promise.resolve(new Response("<html>ok</html>", { status: 200 }))) as typeof globalThis.fetch;
 const brokenFetch = (() =>
   Promise.resolve(new Response(null, { status: 500 }))) as typeof globalThis.fetch;
+const blankFetch = (() =>
+  Promise.resolve(new Response("", { status: 200 }))) as typeof globalThis.fetch;
+const noSleep = () => Promise.resolve();
 
 describe("fixWpRocketCommand (API default)", () => {
   beforeEach(() => {
@@ -59,10 +62,54 @@ describe("fixWpRocketCommand (API default)", () => {
   });
 
   it("reports failure when the homepage still 500s after the fix", async () => {
-    const results = await fixWpRocketCommand(makeClient(), "bravosite", { fetch: brokenFetch });
+    const results = await fixWpRocketCommand(makeClient(), "bravosite", {
+      fetch: brokenFetch,
+      verifyAttempts: 2,
+      sleep: noSleep,
+    });
     expect(results[0]?.ok).toBe(false);
     expect(results[0]?.verifiedStatus).toBe(500);
     expect(results[0]?.note).toContain("still returning an error");
+  });
+
+  it("reports failure when the homepage returns a blank 200 after the fix", async () => {
+    let clears = 0;
+    server.use(
+      http.post(`${BASE}/sites/tools/clear-cache`, () => {
+        clears += 1;
+        return HttpResponse.json({ operation_id: "cache:clear-blank" });
+      }),
+    );
+    const results = await fixWpRocketCommand(makeClient(), "bravosite", {
+      fetch: blankFetch,
+      verifyAttempts: 3,
+      sleep: noSleep,
+    });
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.category).toBe("blank");
+    expect(results[0]?.note).toContain("blank");
+    // one clear during remediation + one re-clear per failed blank retry
+    expect(clears).toBeGreaterThan(1);
+  });
+
+  it("recovers when a stale blank cache clears on a later verification attempt", async () => {
+    let calls = 0;
+    const flakyFetch = (() => {
+      calls += 1;
+      return Promise.resolve(
+        calls === 1
+          ? new Response("", { status: 200 })
+          : new Response("<html>ok</html>", { status: 200 }),
+      );
+    }) as typeof globalThis.fetch;
+
+    const results = await fixWpRocketCommand(makeClient(), "bravosite", {
+      fetch: flakyFetch,
+      verifyAttempts: 3,
+      sleep: noSleep,
+    });
+    expect(results[0]?.ok).toBe(true);
+    expect(results[0]?.category).toBe("ok");
   });
 
   it("skips a site with no wp-rocket fatal unless forced", async () => {

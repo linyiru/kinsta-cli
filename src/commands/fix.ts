@@ -1,11 +1,11 @@
 import pc from "picocolors";
 import type { KinstaClient } from "../api.ts";
-import { diagnoseLogs } from "../analyze.ts";
+import { diagnoseLogs, type HealthCategory } from "../analyze.ts";
 import { pickLiveEnv, primaryDomainOf, resolveSite } from "../resolve.ts";
 import { Ssh2Runner, type SshRunner, type SshTarget } from "../ssh.ts";
 import type { Environment, Site } from "../types.ts";
 import { WP_ROCKET_REMEDIATION_COMMANDS } from "../wpcli.ts";
-import { checkHealth } from "./health.ts";
+import { checkHealth, type HealthResult } from "./health.ts";
 
 export interface FixWpRocketOptions {
   all?: boolean;
@@ -17,6 +17,12 @@ export interface FixWpRocketOptions {
   wait?: boolean;
   runner?: SshRunner;
   fetch?: typeof globalThis.fetch;
+  /** Homepage verification attempts (handles PHP-restart 503 races / stale cache). */
+  verifyAttempts?: number;
+  /** Delay between verification attempts, in ms. */
+  verifyDelayMs?: number;
+  /** Injectable sleep (tests pass a no-op). */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export interface FixResult {
@@ -25,6 +31,7 @@ export interface FixResult {
   ok: boolean;
   action: string;
   verifiedStatus?: number;
+  category?: HealthCategory;
   note?: string;
 }
 
@@ -51,19 +58,65 @@ async function confirmWpRocket(client: KinstaClient, env: Environment): Promise<
   }
 }
 
+const DEFAULT_VERIFY_ATTEMPTS = 4;
+const DEFAULT_VERIFY_DELAY_MS = 3000;
+
+const defaultSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Verify the homepage the way a real visitor sees it: hit the *cached* URL (no
+ * cache-buster) so a stale blank cache entry is caught, and confirm the body is
+ * non-empty (a plugin fatal swallowed by an output buffer returns a blank 200).
+ * Retries a few times to ride out the PHP-FPM restart window (transient 503),
+ * and re-clears the page cache once if it sees a blank response.
+ */
 async function verifyHomepage(
   client: KinstaClient,
   site: Site,
   env: Environment,
   opts: FixWpRocketOptions,
-): Promise<number | undefined> {
+): Promise<HealthResult | undefined> {
   const domain = primaryDomainOf(env);
   if (!domain) return undefined;
-  const [result] = await checkHealth(
-    [{ name: site.name, domain, siteId: site.id, envId: env.id }],
-    { fetch: opts.fetch, concurrency: 1 },
-  );
-  return result?.status;
+  const target = { name: site.name, domain, siteId: site.id, envId: env.id };
+  const attempts = opts.verifyAttempts ?? DEFAULT_VERIFY_ATTEMPTS;
+  const delayMs = opts.verifyDelayMs ?? DEFAULT_VERIFY_DELAY_MS;
+  const sleep = opts.sleep ?? defaultSleep;
+
+  let last: HealthResult | undefined;
+  for (let i = 0; i < attempts; i++) {
+    const [result] = await checkHealth([target], {
+      fetch: opts.fetch,
+      concurrency: 1,
+      cacheBust: false,
+    });
+    last = result;
+    if (result?.category === "ok") return result;
+    if (i < attempts - 1) {
+      // A blank 200 is usually a stale cache entry holding the pre-fix page.
+      if (result?.category === "blank") {
+        try {
+          await client.clearCache(env.id);
+        } catch {
+          // Best-effort; the next probe is the authoritative check.
+        }
+      }
+      await sleep(delayMs);
+    }
+  }
+  return last;
+}
+
+function summarizeVerification(result: HealthResult | undefined): {
+  ok: boolean;
+  note?: string;
+} {
+  if (result === undefined) return { ok: true };
+  if (result.category === "ok") return { ok: true };
+  if (result.category === "blank") {
+    return { ok: false, note: "homepage still returns a blank 200 after fix" };
+  }
+  return { ok: false, note: "still returning an error after fix" };
 }
 
 /** Default remediation via the Kinsta API (no SSH; closes the MITM concern). */
@@ -93,14 +146,15 @@ async function fixOneApi(
     }
   }
 
-  const verifiedStatus = await verifyHomepage(client, site, env, opts);
-  const ok = verifiedStatus === undefined || verifiedStatus < 500;
+  const verified = await verifyHomepage(client, site, env, opts);
+  const { ok, note } = summarizeVerification(verified);
   return {
     ...base,
     ok,
     action: "wp-rocket deactivated (WP_CACHE off), PHP restarted, cache cleared",
-    verifiedStatus,
-    note: ok ? undefined : "still returning an error after fix",
+    verifiedStatus: verified?.status,
+    category: verified?.category,
+    note,
   };
 }
 
@@ -136,14 +190,15 @@ async function fixOneSsh(
   await client.restartPhp(env.id);
   await client.clearCache(env.id);
 
-  const verifiedStatus = await verifyHomepage(client, site, env, opts);
-  const ok = verifiedStatus === undefined || verifiedStatus < 500;
+  const verified = await verifyHomepage(client, site, env, opts);
+  const { ok, note } = summarizeVerification(verified);
   return {
     ...base,
     ok,
     action: "wp-rocket deactivated, PHP restarted, cache cleared (ssh)",
-    verifiedStatus,
-    note: ok ? undefined : "still returning an error after fix",
+    verifiedStatus: verified?.status,
+    category: verified?.category,
+    note,
   };
 }
 

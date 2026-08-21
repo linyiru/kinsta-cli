@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `kinsta wp <site> <command...>` — run a single WP-CLI command through the
   Kinsta API without SSH. Supports `--wait` (poll the operation to completion)
   and `--json`. The API runs commands asynchronously and returns no stdout.
+- `health` now flags a new `blank` category: a `200` response with an empty
+  body (e.g. a plugin fatal swallowed by an early output buffer), which
+  previously looked healthy. `checkHealth` reads a small body prefix to detect
+  this without downloading the whole page.
 
 ### Changed
 
@@ -20,6 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wp-rocket and sets `WP_CACHE` false to stop the broken `advanced-cache.php`
   drop-in from loading. Added `--wait` to await each operation before
   verifying, and `--ssh` to fall back to the original SSH + WP-CLI flow.
+- `fix wp-rocket` verification is hardened: it now probes the real (non
+  cache-busted) homepage the way a visitor sees it, treats a blank `200` as a
+  failure, retries a few times to ride out the PHP-FPM restart window
+  (transient `503`), and re-clears the page cache once when it sees a stale
+  blank cache entry.
+
+### Fixed
+
+- `getSshConfig` now handles the flat `GET .../ssh/config` response shape the
+  Kinsta API actually returns (previously it assumed an `environment` wrapper,
+  causing `Cannot read properties of undefined (reading 'host')` for
+  `ssh --info/--exec` and the `--ssh` fix path). The legacy wrapped shape is
+  still supported.
 
 ## [0.2.0] - 2026-08-20
 

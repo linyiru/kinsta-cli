@@ -109,6 +109,12 @@ false to stop WordPress loading the broken `advanced-cache.php` drop-in. Pass `-
 operation to completion before the homepage is re-checked, or `--ssh` to fall back to the original
 SSH + WP-CLI flow (which also removes the drop-in outright).
 
+Verification is deliberately strict: `fix` re-checks the **real** (non cache-busted) homepage the
+way a visitor sees it, treats a blank `200` (empty body) as a failure rather than success, retries
+a few times to ride out the PHP-FPM restart window (a transient `503`), and re-clears the page
+cache once if it finds a stale blank entry. `health` reports the same empty-body case as a distinct
+**`BLANK`** status so a fatal swallowed by an output buffer no longer masquerades as healthy.
+
 ### `kinsta wp`
 
 Runs one WP-CLI command through the Kinsta API. The API accepts a single `wp ...` invocation with

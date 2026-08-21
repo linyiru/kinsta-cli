@@ -1,4 +1,10 @@
-export type HealthCategory = "ok" | "server_error" | "forbidden" | "unreachable" | "other";
+export type HealthCategory =
+  | "ok"
+  | "blank"
+  | "server_error"
+  | "forbidden"
+  | "unreachable"
+  | "other";
 
 export function classifyHttpStatus(code: number): HealthCategory {
   if (code === 0) return "unreachable";

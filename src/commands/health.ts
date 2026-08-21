@@ -15,6 +15,8 @@ export interface HealthTarget {
 export interface HealthResult extends HealthTarget {
   status: number;
   category: HealthCategory;
+  /** Bytes of (trimmed) body read from the prefix; undefined when not inspected. */
+  bytes?: number;
 }
 
 export interface CheckOptions {
@@ -23,11 +25,55 @@ export interface CheckOptions {
   timeoutMs?: number;
   /** Random suffix generator for cache-busting (injectable for tests). */
   nonce?: () => string;
+  /**
+   * Append a cache-busting query param so a cached 200 can't mask a broken
+   * origin. Defaults to true. Set false to verify exactly what a browser sees
+   * (i.e. the cached URL) — used by `fix` to catch stale blank cache entries.
+   */
+  cacheBust?: boolean;
+  /** Max body bytes to read when checking for an empty ("blank") response. */
+  maxBodyBytes?: number;
 }
 
 /**
- * Probe each target's homepage with a cache-busting query param so that a
- * cached 200 never masks an underlying 500. Network failures map to status 0.
+ * Read up to `maxBytes` of the response body and return the trimmed text. Cancels
+ * the rest of the stream so we never download a full (multi-hundred-KB) page just
+ * to prove it is non-empty.
+ */
+async function readBodyPrefix(res: Response, maxBytes: number): Promise<string> {
+  const reader = res.body?.getReader();
+  if (!reader) {
+    const text = await res.text().catch(() => "");
+    return text.slice(0, maxBytes).trim();
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < maxBytes) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        total += value.length;
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return new TextDecoder().decode(merged).trim();
+}
+
+/**
+ * Probe each target's homepage. By default a cache-busting query param ensures a
+ * cached 200 never masks an underlying 500. A 200 with an empty body is reported
+ * as `blank` (e.g. a plugin fatal swallowed by an early output buffer, which
+ * otherwise looks healthy). Network failures map to status 0.
  */
 export async function checkHealth(
   targets: HealthTarget[],
@@ -37,11 +83,15 @@ export async function checkHealth(
   const limit = pLimit(opts.concurrency ?? 10);
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const nonce = opts.nonce ?? (() => Math.random().toString(36).slice(2));
+  const cacheBust = opts.cacheBust ?? true;
+  const maxBodyBytes = opts.maxBodyBytes ?? 4096;
 
   return Promise.all(
     targets.map((target) =>
       limit(async (): Promise<HealthResult> => {
-        const url = `https://${target.domain}/?kinstahealth=${nonce()}`;
+        const url = cacheBust
+          ? `https://${target.domain}/?kinstahealth=${nonce()}`
+          : `https://${target.domain}/`;
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
@@ -51,11 +101,14 @@ export async function checkHealth(
             signal: controller.signal,
             headers: { "User-Agent": "kinsta-cli/health" },
           });
-          return {
-            ...target,
-            status: res.status,
-            category: classifyHttpStatus(res.status),
-          };
+          let category = classifyHttpStatus(res.status);
+          let bytes: number | undefined;
+          if (category === "ok") {
+            const body = await readBodyPrefix(res, maxBodyBytes);
+            bytes = body.length;
+            if (bytes === 0) category = "blank";
+          }
+          return { ...target, status: res.status, category, bytes };
         } catch {
           return { ...target, status: 0, category: "unreachable" };
         } finally {
@@ -68,6 +121,7 @@ export async function checkHealth(
 
 const CATEGORY_LABEL: Record<HealthCategory, string> = {
   ok: "OK",
+  blank: "BLANK",
   server_error: "SERVER ERROR",
   forbidden: "FORBIDDEN",
   unreachable: "UNREACHABLE",
@@ -79,6 +133,8 @@ function colorStatus(result: HealthResult): string {
   switch (result.category) {
     case "ok":
       return pc.green(text);
+    case "blank":
+      return pc.red(`${text}∅`);
     case "server_error":
       return pc.red(text);
     case "forbidden":
@@ -128,7 +184,7 @@ export async function healthCommand(client: KinstaClient, opts: HealthOptions = 
 
   const counts = new Map<HealthCategory, number>();
   for (const r of results) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
-  const summary = (["ok", "server_error", "forbidden", "unreachable", "other"] as const)
+  const summary = (["ok", "blank", "server_error", "forbidden", "unreachable", "other"] as const)
     .filter((c) => counts.has(c))
     .map((c) => `${CATEGORY_LABEL[c]}: ${counts.get(c)}`)
     .join("  ");
