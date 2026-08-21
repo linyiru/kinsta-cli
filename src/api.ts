@@ -165,10 +165,11 @@ export class KinstaClient {
 
   /** GET /sites/{site_id}/environments/{env_id}/ssh/config */
   async getSshConfig(siteId: string, envId: string): Promise<SshConfig> {
-    const data = await this.request<{ environment: SshConfig }>(
+    const data = await this.request<SshConfig & { environment?: SshConfig }>(
       `/sites/${siteId}/environments/${envId}/ssh/config`,
     );
-    return data.environment;
+    // The API returns the config flat; older/other shapes wrap it in `environment`.
+    return data.environment ?? data;
   }
 
   /** GET /sites/environments/{env_id}/ssh/password — the real SFTP/SSH password. */

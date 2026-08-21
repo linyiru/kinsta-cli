@@ -41,10 +41,31 @@ describe("KinstaClient (replayed against recorded fixtures)", () => {
   it("fetches ssh config and password", async () => {
     const client = makeClient();
     const config = await client.getSshConfig("site", "env");
+    expect(config.host).toBe("203.0.113.11");
     expect(config.port).toBe("12002");
     expect(config.user).toBe("bravosite");
     const password = await client.getSshPassword("env");
     expect(password).toBe("fake-Passw0rd-not-real-2f8b1c");
+  });
+
+  it("unwraps a legacy environment-wrapped ssh config shape", async () => {
+    server.use(
+      http.get(`${BASE}/sites/:siteId/environments/:envId/ssh/config`, () =>
+        HttpResponse.json({
+          environment: {
+            name: "Wrapped",
+            host: "198.51.100.7",
+            port: "22001",
+            user: "wrappedsite",
+            ssh_command: "ssh wrappedsite@198.51.100.7 -p 22001",
+          },
+        }),
+      ),
+    );
+    const config = await makeClient().getSshConfig("site", "env");
+    expect(config.host).toBe("198.51.100.7");
+    expect(config.port).toBe("22001");
+    expect(config.user).toBe("wrappedsite");
   });
 
   it("returns operation ids for cache and php operations", async () => {
