@@ -43,6 +43,7 @@ kinsta php restart <site>        Restart PHP (clears OPcache)
 kinsta ssh <site>                Open an SSH shell (--info to print details, --exec to run one command)
 kinsta wp <site> <command...>    Run a single WP-CLI command via the Kinsta API (no SSH)
 kinsta fix wp-rocket [site]      Deactivate the wp-rocket PHP 8 fatal, restart PHP, clear cache
+kinsta delete site <site>        Permanently delete a site (typed confirmation required)
 ```
 
 `<site>` accepts a site name, display name, or any domain (exact match wins over substring).
@@ -123,6 +124,48 @@ and runs it **asynchronously without returning stdout**. The command prints the 
 `--wait` polls until it finishes, `--json` emits machine-readable output. Quote the WP-CLI command
 when it carries its own flags (e.g. `kinsta wp <site> "plugin deactivate wp-rocket --skip-plugins"`).
 Use `kinsta ssh --exec` when you need the command's output.
+
+### `kinsta delete site`
+
+Deleting a site removes every environment, its database and its files, and Kinsta
+offers no undo — so this command is deliberately harder to use than the others.
+
+```bash
+kinsta delete site donnadiet --dry-run          # show what would go, change nothing
+kinsta delete site donnadiet                    # interactive: retype the site name
+kinsta delete site donnadiet --confirm donnadiet  # non-interactive
+```
+
+The guardrails, and why each one is there:
+
+- **`<site>` must match exactly.** Every other command accepts a substring; here
+  that convenience would let a typo resolve to a site nobody looked at.
+- **The confirmation string is the resolved `site.name`**, not the argument you
+  typed. Resolving by domain is fine, but you still have to confirm with the name
+  printed in the summary — so you have to read it. `--confirm` is therefore
+  bound to one specific site and cannot be pasted between invocations.
+- **Non-interactive stdin without `--confirm` is refused**, never treated as
+  consent, so a stray invocation in CI cannot delete anything.
+- **The site is re-read immediately before the delete**, because a site id from
+  an older listing may since have been deleted and the name reused.
+- **There is no `--all` and no wildcard.** One site per invocation.
+
+Deletion is asynchronous: the API answers `202` with an operation id and the site
+shows up as `status: deleting` in `kinsta sites` until it finishes. The command
+polls that operation and then confirms the site really is gone (a `404` on
+`GET /sites/{id}`) before reporting success. `--no-wait` returns as soon as the
+request is accepted.
+
+**Back up first — the command does not.** A verified backup means a database dump
+and a `wp-content` archive whose checksums match after transfer, not just files
+that exist:
+
+```bash
+kinsta ssh <site> --exec "cd <web_root> && wp db export /path/private/db.sql"
+kinsta ssh <site> --exec "cd <web_root> && tar czf /path/private/files.tar.gz wp-content wp-config.php"
+# download both, then verify: sha256 matches, `tar tzf` lists, and the dump ends
+# with "-- Dump completed on ..."
+```
 
 ## SSH host-key verification
 
