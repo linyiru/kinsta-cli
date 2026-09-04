@@ -138,6 +138,34 @@ describe("deleteSiteCommand", () => {
     ).rejects.toBeInstanceOf(DeleteFailedError);
   });
 
+  it("--no-wait queues the delete without polling or verifying", async () => {
+    // The one success path that deliberately skips verification. It must issue
+    // exactly one DELETE, never poll, and say "queued" rather than claim the
+    // site is gone — otherwise it would report a success it has not checked.
+    let deleteCalls = 0;
+    let operationPolls = 0;
+    stubSite("bravosite", { goneAfterDelete: true });
+    server.use(
+      http.delete(`${BASE}/sites/:siteId`, () => {
+        deleteCalls += 1;
+        return HttpResponse.json({ operation_id: "sites:delete-1" }, { status: 202 });
+      }),
+      http.get(`${BASE}/operations/:id`, () => {
+        operationPolls += 1;
+        return HttpResponse.json({ status: 200, message: "Operation finished successfully." });
+      }),
+    );
+
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    await deleteSiteCommand(makeClient(), "bravosite", { confirm: "bravosite", noWait: true });
+
+    expect(deleteCalls).toBe(1);
+    expect(operationPolls).toBe(0);
+    const output = log.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(output).toContain("queued");
+    expect(output).not.toContain("bravosite deleted");
+  });
+
   it("deletes and confirms the site is gone", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     stubSite("bravosite", { goneAfterDelete: true });
