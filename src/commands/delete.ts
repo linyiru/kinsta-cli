@@ -21,19 +21,6 @@ export class DeleteAbortedError extends Error {
   }
 }
 
-/**
- * Deletion is irreversible, so `<site>` must match a site exactly — by name,
- * display name, or one of its domains. Every other command accepts a substring
- * for convenience; here that convenience would let a typo resolve to a site the
- * operator never looked at.
- */
-function matchesExactly(site: Site, query: string): boolean {
-  const q = query.trim().toLowerCase();
-  if (site.name.toLowerCase() === q) return true;
-  if (site.display_name.toLowerCase() === q) return true;
-  return site.environments.some((env) => env.domains?.some((d) => d.name.toLowerCase() === q));
-}
-
 function describe(site: Site): void {
   const env = pickLiveEnv(site);
   const domains = (env?.domains ?? []).map((d) => d.name).filter((n) => !n.startsWith("*."));
@@ -73,9 +60,12 @@ export async function deleteSiteCommand(
   opts: DeleteSiteOptions = {},
 ): Promise<void> {
   const sites = await client.listSites();
-  const { site } = resolveSite(sites, query);
+  const { site, matchKind } = resolveSite(sites, query);
 
-  if (!matchesExactly(site, query)) {
+  // Deletion is irreversible, so `<site>` must name the site outright. Every
+  // other command accepts a substring for convenience; here that convenience
+  // would let a typo resolve to a site the operator never looked at.
+  if (matchKind !== "exact") {
     throw new SiteResolutionError(
       `"${query}" only matched "${site.name}" as a substring. ` +
         `Deletion needs an exact site name, display name, or domain.`,

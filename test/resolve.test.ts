@@ -40,6 +40,13 @@ describe("resolveSite", () => {
     expect(site.name).toBe("alphasite");
   });
 
+  it("reports how the query matched", () => {
+    expect(resolveSite(sites, "alphasite").matchKind).toBe("exact");
+    expect(resolveSite(sites, "Alpha Site").matchKind).toBe("exact");
+    expect(resolveSite(sites, "example-alpha.com").matchKind).toBe("exact");
+    expect(resolveSite(sites, "alpha").matchKind).toBe("substring");
+  });
+
   it("throws when nothing matches", () => {
     expect(() => resolveSite(sites, "nope")).toThrow(SiteResolutionError);
   });

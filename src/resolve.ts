@@ -1,4 +1,4 @@
-import type { Environment, ResolvedSite, Site } from "./types.ts";
+import type { Environment, MatchKind, ResolvedSite, Site } from "./types.ts";
 
 /** The live environment if present, else the first environment. */
 export function pickLiveEnv(site: Site): Environment | undefined {
@@ -37,6 +37,7 @@ export function resolveSite(sites: Site[], query: string): ResolvedSite {
     return site.environments.some((env) => env.domains?.some((d) => d.name.toLowerCase() === q));
   });
 
+  const matchKind: MatchKind = exact.length > 0 ? "exact" : "substring";
   const candidates =
     exact.length > 0
       ? exact
@@ -63,5 +64,5 @@ export function resolveSite(sites: Site[], query: string): ResolvedSite {
   if (!env) {
     throw new SiteResolutionError(`Site "${site.name}" has no environments.`);
   }
-  return { site, env };
+  return { site, env, matchKind };
 }
