@@ -163,6 +163,24 @@ export class KinstaClient {
     return data.site?.environments ?? [];
   }
 
+  /** GET /sites/{site_id} — a single site, used to re-verify identity before destructive work. */
+  async getSite(siteId: string): Promise<Site> {
+    const data = await this.request<{ site: Site }>(`/sites/${siteId}`);
+    return data.site;
+  }
+
+  /**
+   * DELETE /sites/{site_id} — permanently deletes a site and every environment.
+   * The API answers 202 with an operation id; the site lingers in `status:
+   * deleting` until that operation finishes.
+   */
+  async deleteSite(siteId: string): Promise<string> {
+    const data = await this.request<{ operation_id: string }>(`/sites/${siteId}`, {
+      method: "DELETE",
+    });
+    return data.operation_id;
+  }
+
   /** GET /sites/{site_id}/environments/{env_id}/ssh/config */
   async getSshConfig(siteId: string, envId: string): Promise<SshConfig> {
     const data = await this.request<SshConfig & { environment?: SshConfig }>(

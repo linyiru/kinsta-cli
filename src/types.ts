@@ -47,10 +47,18 @@ export interface SshConfig {
   ssh_command: string;
 }
 
+/** How a query matched the site it resolved to. */
+export type MatchKind = "exact" | "substring";
+
 /** A site paired with the environment we operate on (usually the live env). */
 export interface ResolvedSite {
   site: Site;
   env: Environment;
+  /**
+   * Whether the query matched name/display name/domain outright, or only as a
+   * substring. Destructive commands refuse the latter.
+   */
+  matchKind: MatchKind;
 }
 
 /** Generic wrapper returned by the `analytics/*` endpoints. */

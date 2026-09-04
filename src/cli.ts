@@ -1,3 +1,4 @@
+import pkg from "../package.json" with { type: "json" };
 import { Command } from "commander";
 import pc from "picocolors";
 import { KinstaApiError, KinstaClient } from "./api.ts";
@@ -8,6 +9,7 @@ import { cacheClearCommand } from "./commands/cache.ts";
 import { diagnoseCommand } from "./commands/diagnose.ts";
 import { fixWpRocketCommand } from "./commands/fix.ts";
 import { healthCommand } from "./commands/health.ts";
+import { deleteSiteCommand } from "./commands/delete.ts";
 import { phpRestartCommand } from "./commands/php.ts";
 import { sitesCommand } from "./commands/sites.ts";
 import { sshCommand } from "./commands/ssh.ts";
@@ -16,7 +18,8 @@ import { ConfigError, loadConfig } from "./config.ts";
 import { SiteResolutionError } from "./resolve.ts";
 import { WpCommandError } from "./wpcli.ts";
 
-const VERSION = "0.2.0";
+// Bundled by rolldown, so this is inlined at build time and cannot drift.
+const VERSION: string = pkg.version;
 
 function createClient(): KinstaClient {
   return new KinstaClient(loadConfig());
@@ -128,6 +131,22 @@ function buildProgram(): Command {
     .description("Restart PHP (clears OPcache)")
     .action(async (site: string) => {
       await phpRestartCommand(createClient(), site);
+    });
+
+  const del = program.command("delete").description("Destructive operations");
+  del
+    .command("site")
+    .argument("<site>", "exact site name, display name, or domain")
+    .description("Permanently delete a site and all of its environments")
+    .option("--confirm <name>", "site name, for non-interactive confirmation")
+    .option("--dry-run", "show what would be deleted and exit")
+    .option("--no-wait", "return once the API accepts the request")
+    .action(async (site: string, opts: { confirm?: string; dryRun?: boolean; wait?: boolean }) => {
+      await deleteSiteCommand(createClient(), site, {
+        confirm: opts.confirm,
+        dryRun: opts.dryRun,
+        noWait: opts.wait === false,
+      });
     });
 
   program
