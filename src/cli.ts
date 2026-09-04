@@ -1,3 +1,4 @@
+import pkg from "../package.json" with { type: "json" };
 import { Command } from "commander";
 import pc from "picocolors";
 import { KinstaApiError, KinstaClient } from "./api.ts";
@@ -16,7 +17,8 @@ import { ConfigError, loadConfig } from "./config.ts";
 import { SiteResolutionError } from "./resolve.ts";
 import { WpCommandError } from "./wpcli.ts";
 
-const VERSION = "0.2.0";
+// Bundled by rolldown, so this is inlined at build time and cannot drift.
+const VERSION: string = pkg.version;
 
 function createClient(): KinstaClient {
   return new KinstaClient(loadConfig());
