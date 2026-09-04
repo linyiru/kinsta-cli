@@ -72,8 +72,8 @@ export async function deleteSiteCommand(
     );
   }
 
-  // Re-read the site immediately before deleting: a site id from an older
-  // listing may since have been deleted and the name reused.
+  // Read the site directly rather than trusting the listing, so the summary
+  // below describes current state and not a cached one.
   const fresh = await client.getSite(site.id);
   if (fresh.name !== site.name) {
     throw new DeleteAbortedError(
@@ -104,6 +104,16 @@ export async function deleteSiteCommand(
     throw new DeleteAbortedError(
       `Refusing to delete without confirmation on a non-interactive stdin. ` +
         `Pass --confirm ${fresh.name}.`,
+    );
+  }
+
+  // Confirming is unbounded — an interactive prompt can sit open for as long as
+  // the operator takes — so re-read once more here, with nothing between this
+  // check and the irreversible call.
+  const atDelete = await client.getSite(fresh.id);
+  if (atDelete.name !== fresh.name) {
+    throw new DeleteAbortedError(
+      `Site ${fresh.id} was renamed to "${atDelete.name}" while awaiting confirmation. Aborting.`,
     );
   }
 

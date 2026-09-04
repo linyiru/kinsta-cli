@@ -83,6 +83,35 @@ describe("deleteSiteCommand", () => {
     expect(deleteCalls).toBe(0);
   });
 
+  it("aborts if the site is renamed while awaiting confirmation", async () => {
+    // Two GETs happen: one for the summary, one immediately before the delete.
+    // A rename landing between them must stop the irreversible call.
+    let reads = 0;
+    let deleteCalls = 0;
+    server.use(
+      http.get(`${BASE}/sites/:siteId`, ({ params }) => {
+        reads += 1;
+        return HttpResponse.json({
+          site: {
+            id: params.siteId,
+            name: reads === 1 ? "bravosite" : "renamed-mid-flight",
+            display_name: "Bravo Site",
+            status: "live",
+            environments: [{ id: "env-1", name: "live", domains: [{ name: "example-bravo.com" }] }],
+          },
+        });
+      }),
+      http.delete(`${BASE}/sites/:siteId`, () => {
+        deleteCalls += 1;
+        return HttpResponse.json({ operation_id: "sites:delete-1" }, { status: 202 });
+      }),
+    );
+    await expect(
+      deleteSiteCommand(makeClient(), "bravosite", { confirm: "bravosite" }),
+    ).rejects.toBeInstanceOf(DeleteAbortedError);
+    expect(deleteCalls).toBe(0);
+  });
+
   it("deletes and confirms the site is gone", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     stubSite("bravosite", { goneAfterDelete: true });

@@ -146,8 +146,10 @@ The guardrails, and why each one is there:
   bound to one specific site and cannot be pasted between invocations.
 - **Non-interactive stdin without `--confirm` is refused**, never treated as
   consent, so a stray invocation in CI cannot delete anything.
-- **The site is re-read immediately before the delete**, because a site id from
-  an older listing may since have been deleted and the name reused.
+- **The site is re-read twice**: once so the summary reflects current state
+  rather than a cached listing, and again with nothing between that check and
+  the irreversible call. Confirming is unbounded — an interactive prompt can sit
+  open indefinitely — so a rename landing in that window aborts the delete.
 - **There is no `--all` and no wildcard.** One site per invocation.
 
 Deletion is asynchronous: the API answers `202` with an operation id and the site
