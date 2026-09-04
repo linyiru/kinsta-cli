@@ -1,7 +1,11 @@
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { KinstaClient } from "../src/api.ts";
-import { DeleteAbortedError, deleteSiteCommand } from "../src/commands/delete.ts";
+import {
+  DeleteAbortedError,
+  DeleteFailedError,
+  deleteSiteCommand,
+} from "../src/commands/delete.ts";
 import { SiteResolutionError } from "../src/resolve.ts";
 import error404 from "./fixtures/error-404.json";
 import { BASE } from "./mocks/handlers.ts";
@@ -110,6 +114,28 @@ describe("deleteSiteCommand", () => {
       deleteSiteCommand(makeClient(), "bravosite", { confirm: "bravosite" }),
     ).rejects.toBeInstanceOf(DeleteAbortedError);
     expect(deleteCalls).toBe(0);
+  });
+
+  it("fails when the operation finishes but the site still exists", async () => {
+    // A delete can report a finished operation and still not have happened;
+    // exiting 0 there would let automation carry on as if it had.
+    stubSite("bravosite"); // never 404s
+    await expect(
+      deleteSiteCommand(makeClient(), "bravosite", { confirm: "bravosite" }),
+    ).rejects.toBeInstanceOf(DeleteFailedError);
+  });
+
+  it("fails when polling times out and the site is still there", async () => {
+    stubSite("bravosite");
+    server.use(
+      // Never leaves the in-progress state, so waitForOperation times out.
+      http.get(`${BASE}/operations/:id`, () =>
+        HttpResponse.json({ status: 202, message: "Operation is still in progress." }),
+      ),
+    );
+    await expect(
+      deleteSiteCommand(makeClient(), "bravosite", { confirm: "bravosite" }),
+    ).rejects.toBeInstanceOf(DeleteFailedError);
   });
 
   it("deletes and confirms the site is gone", async () => {

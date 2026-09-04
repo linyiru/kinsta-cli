@@ -14,10 +14,22 @@ export interface DeleteSiteOptions {
   noWait?: boolean;
 }
 
+/** The delete never ran: a guardrail stopped it, or confirmation failed. */
 export class DeleteAbortedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DeleteAbortedError";
+  }
+}
+
+/**
+ * The delete ran but the site is still there. Thrown rather than reported so
+ * the process exits non-zero and automation cannot treat it as a success.
+ */
+export class DeleteFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DeleteFailedError";
   }
 }
 
@@ -126,12 +138,11 @@ export async function deleteSiteCommand(
   }
 
   const result = await client.waitForOperation(operationId, { intervalMs: 5000, maxAttempts: 60 });
-  if (result.timedOut) {
-    console.log(pc.yellow("!") + ` delete still running after the poll window — ${result.message}`);
-    return;
-  }
 
-  // Deleting is asynchronous; only a 404 proves the site is really gone.
+  // The operation status is not proof either way: a delete that failed can
+  // still report a finished operation, and one that timed out may have landed
+  // anyway. Whether the site still resolves is the ground truth, so check that
+  // regardless of how the polling ended.
   let gone = false;
   try {
     await client.getSite(fresh.id);
@@ -140,11 +151,15 @@ export async function deleteSiteCommand(
     else throw err;
   }
 
-  if (gone) {
-    console.log(pc.green("✓") + ` ${pc.bold(fresh.name)} deleted`);
-  } else {
-    console.log(
-      pc.yellow("!") + ` operation finished but ${fresh.name} still resolves; check MyKinsta.`,
+  if (!gone) {
+    throw new DeleteFailedError(
+      result.timedOut
+        ? `${fresh.name} still exists and the delete did not finish within the poll window ` +
+            `(${result.message}). Re-run to resume, or check MyKinsta.`
+        : `${fresh.name} still exists after the delete operation finished ` +
+            `(${result.message}). Check MyKinsta.`,
     );
   }
+
+  console.log(pc.green("✓") + ` ${pc.bold(fresh.name)} deleted`);
 }

@@ -154,9 +154,15 @@ The guardrails, and why each one is there:
 
 Deletion is asynchronous: the API answers `202` with an operation id and the site
 shows up as `status: deleting` in `kinsta sites` until it finishes. The command
-polls that operation and then confirms the site really is gone (a `404` on
-`GET /sites/{id}`) before reporting success. `--no-wait` returns as soon as the
-request is accepted.
+polls that operation, then checks whether the site is actually gone (a `404` on
+`GET /sites/{id}`).
+
+That existence check — not the operation status — decides the exit code, because
+a delete that failed can still report a finished operation, and one that timed
+out may have landed anyway. The site being gone is the only success. If it is
+still there, whether polling finished or timed out, the command exits non-zero
+so automation cannot carry on as though the site were deleted. `--no-wait`
+returns as soon as the request is accepted and makes no such claim.
 
 **Back up first — the command does not.** A verified backup means a database dump
 and a `wp-content` archive whose checksums match after transfer, not just files
