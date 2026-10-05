@@ -189,6 +189,20 @@ describe("KinstaClient (replayed against recorded fixtures)", () => {
     expect(result.timedOut).toBe(false);
   });
 
+  it("keeps polling through a dropped connection", async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${BASE}/operations/:operationId`, () => {
+        calls += 1;
+        if (calls < 2) return HttpResponse.error();
+        return HttpResponse.json({ status: 200, message: "done" }, { status: 200 });
+      }),
+    );
+    const result = await makeClient().waitForOperation("op-1", { intervalMs: 0, maxAttempts: 5 });
+    expect(result.status).toBe(200);
+    expect(calls).toBe(2);
+  });
+
   it("reports a timeout when the operation never finishes", async () => {
     server.use(
       http.get(`${BASE}/operations/:operationId`, () =>

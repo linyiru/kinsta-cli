@@ -388,8 +388,7 @@ export class KinstaClient {
 
   /**
    * Poll an operation until it leaves the in-progress (202) state or attempts
-   * are exhausted. A freshly-created operation may 404 briefly, which is
-   * treated as still-pending.
+   * are exhausted. A 404 or a network error counts as still pending.
    */
   async waitForOperation(
     operationId: string,
@@ -402,7 +401,10 @@ export class KinstaClient {
       try {
         last = await this.getOperation(operationId);
       } catch (err) {
-        if (err instanceof KinstaApiError && err.status === 404) {
+        // A fresh operation may 404 briefly. A dropped connection (fetch
+        // rejects with a TypeError) says nothing about the operation either;
+        // giving up there would abandon one that is still running.
+        if ((err instanceof KinstaApiError && err.status === 404) || err instanceof TypeError) {
           await this.sleep(intervalMs);
           continue;
         }
