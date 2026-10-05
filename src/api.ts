@@ -1,8 +1,10 @@
 import type {
   AnalyticsResponse,
+  DomainRecords,
   Environment,
   OperationStatus,
   Site,
+  SiteDomain,
   SshConfig,
   UsageSummary,
 } from "./types.ts";
@@ -178,6 +180,76 @@ export class KinstaClient {
     const data = await this.request<{ operation_id: string }>(`/sites/${siteId}`, {
       method: "DELETE",
     });
+    return data.operation_id;
+  }
+
+  /**
+   * POST /sites/clone — copies an environment into a brand-new site. The
+   * response carries only an operation id; the new site's id is found by its
+   * display name once the operation finishes.
+   */
+  async cloneSite(sourceEnvId: string, displayName: string): Promise<string> {
+    const data = await this.request<{ operation_id: string }>("/sites/clone", {
+      method: "POST",
+      body: { company: this.companyId, display_name: displayName, source_env_id: sourceEnvId },
+    });
+    return data.operation_id;
+  }
+
+  /** POST /sites/environments/{env_id}/manual-backups */
+  async createManualBackup(envId: string, tag = ""): Promise<string> {
+    const data = await this.request<{ operation_id: string }>(
+      `/sites/environments/${envId}/manual-backups`,
+      { method: "POST", body: { tag } },
+    );
+    return data.operation_id;
+  }
+
+  /** GET /sites/environments/{env_id}/domains */
+  async listSiteDomains(envId: string): Promise<SiteDomain[]> {
+    const data = await this.request<{ environment: { site_domains: SiteDomain[] } }>(
+      `/sites/environments/${envId}/domains`,
+    );
+    return data.environment?.site_domains ?? [];
+  }
+
+  /**
+   * POST /sites/environments/{env_id}/domains — adds one domain without a
+   * wildcard. The API refuses `add_with_www_subdomain` on a wildcardless
+   * domain, so a www host is added as a domain of its own.
+   */
+  async addSiteDomain(envId: string, domainName: string): Promise<string> {
+    const data = await this.request<{ operation_id: string }>(
+      `/sites/environments/${envId}/domains`,
+      { method: "POST", body: { domain_name: domainName, is_wildcardless: true } },
+    );
+    return data.operation_id;
+  }
+
+  /** GET /sites/environments/domains/{site_domain_id}/verification-records */
+  async getDomainRecords(siteDomainId: string): Promise<DomainRecords> {
+    const data = await this.request<{ site_domain: DomainRecords }>(
+      `/sites/environments/domains/${siteDomainId}/verification-records`,
+    );
+    return {
+      verification_records: data.site_domain?.verification_records ?? [],
+      pointing_records: data.site_domain?.pointing_records ?? [],
+    };
+  }
+
+  /** PUT /sites/environments/{env_id}/change-primary-domain */
+  async changePrimaryDomain(
+    envId: string,
+    siteDomainId: string,
+    runSearchAndReplace: boolean,
+  ): Promise<string> {
+    const data = await this.request<{ operation_id: string }>(
+      `/sites/environments/${envId}/change-primary-domain`,
+      {
+        method: "PUT",
+        body: { domain_id: siteDomainId, run_search_and_replace: runSearchAndReplace },
+      },
+    );
     return data.operation_id;
   }
 

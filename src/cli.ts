@@ -5,8 +5,17 @@ import { KinstaApiError, KinstaClient } from "./api.ts";
 import type { HealthCategory } from "./analyze.ts";
 import { METRIC_NAMES, UnknownMetricError } from "./analytics.ts";
 import { analyticsCommand, AnalyticsUsageError } from "./commands/analytics.ts";
+import { backupCreateCommand } from "./commands/backup.ts";
 import { cacheClearCommand } from "./commands/cache.ts";
+import { CloneError, cloneSiteCommand } from "./commands/clone.ts";
 import { diagnoseCommand } from "./commands/diagnose.ts";
+import {
+  domainAddCommand,
+  domainListCommand,
+  DomainNotFoundError,
+  domainPrimaryCommand,
+  domainRecordsCommand,
+} from "./commands/domain.ts";
 import { fixWpRocketCommand } from "./commands/fix.ts";
 import { healthCommand } from "./commands/health.ts";
 import { deleteSiteCommand } from "./commands/delete.ts";
@@ -15,6 +24,7 @@ import { sitesCommand } from "./commands/sites.ts";
 import { sshCommand } from "./commands/ssh.ts";
 import { wpCliCommand } from "./commands/wp.ts";
 import { ConfigError, loadConfig } from "./config.ts";
+import { OperationFailedError } from "./operation.ts";
 import { SiteResolutionError } from "./resolve.ts";
 import { WpCommandError } from "./wpcli.ts";
 
@@ -38,6 +48,14 @@ function handleError(err: unknown): never {
   if (err instanceof UnknownMetricError || err instanceof AnalyticsUsageError) {
     console.error(pc.red(err.message));
     process.exit(2);
+  }
+  if (err instanceof CloneError || err instanceof DomainNotFoundError) {
+    console.error(pc.red(err.message));
+    process.exit(2);
+  }
+  if (err instanceof OperationFailedError) {
+    console.error(pc.red(err.message));
+    process.exit(1);
   }
   if (err instanceof WpCommandError) {
     console.error(pc.red(err.message));
@@ -132,6 +150,76 @@ function buildProgram(): Command {
     .action(async (site: string) => {
       await phpRestartCommand(createClient(), site);
     });
+
+  const backup = program.command("backup").description("Backup operations");
+  backup
+    .command("create")
+    .argument("<site>", "site name or domain")
+    .description("Create a manual backup of the live environment")
+    .option("--tag <tag>", "label shown in MyKinsta")
+    .option("--no-wait", "return once the API accepts the request")
+    .action(async (site: string, opts: { tag?: string; wait?: boolean }) => {
+      await backupCreateCommand(createClient(), site, {
+        tag: opts.tag,
+        noWait: opts.wait === false,
+      });
+    });
+
+  program
+    .command("clone")
+    .argument("<site>", "exact site name, display name, or domain to copy")
+    .description("Clone a site's live environment into a new site")
+    .requiredOption("--name <display-name>", "display name of the new site")
+    .option("--no-wait", "return once the API accepts the request")
+    .action(async (site: string, opts: { name: string; wait?: boolean }) => {
+      await cloneSiteCommand(createClient(), site, {
+        name: opts.name,
+        noWait: opts.wait === false,
+      });
+    });
+
+  const domain = program.command("domain").description("Site domain operations");
+  domain
+    .command("list")
+    .argument("<site>", "site name or domain")
+    .description("List the live environment's domains")
+    .option("--json", "output raw JSON")
+    .action(async (site: string, opts: { json?: boolean }) => {
+      await domainListCommand(createClient(), site, opts);
+    });
+  domain
+    .command("add")
+    .argument("<site>", "site name or domain")
+    .argument("<domain...>", "domain(s) to add; add www.<domain> as its own entry")
+    .description("Add domain(s) and print the DNS records to set")
+    .option("--no-wait", "return once the API accepts each request")
+    .action(async (site: string, domains: string[], opts: { wait?: boolean }) => {
+      await domainAddCommand(createClient(), site, domains, { noWait: opts.wait === false });
+    });
+  domain
+    .command("records")
+    .argument("<site>", "site name or domain")
+    .argument("<domain>", "a domain already added to the site")
+    .description("Show the verification and pointing DNS records for a domain")
+    .option("--json", "output raw JSON")
+    .action(async (site: string, name: string, opts: { json?: boolean }) => {
+      await domainRecordsCommand(createClient(), site, name, opts);
+    });
+  domain
+    .command("primary")
+    .argument("<site>", "site name or domain")
+    .argument("<domain>", "a verified domain of the site")
+    .description("Make a domain primary (search-replaces the old URL by default)")
+    .option("--no-search-replace", "keep the old URL in the database")
+    .option("--no-wait", "return once the API accepts the request")
+    .action(
+      async (site: string, name: string, opts: { searchReplace?: boolean; wait?: boolean }) => {
+        await domainPrimaryCommand(createClient(), site, name, {
+          searchReplace: opts.searchReplace,
+          noWait: opts.wait === false,
+        });
+      },
+    );
 
   const del = program.command("delete").description("Destructive operations");
   del

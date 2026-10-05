@@ -43,6 +43,12 @@ kinsta php restart <site>        Restart PHP (clears OPcache)
 kinsta ssh <site>                Open an SSH shell (--info to print details, --exec to run one command)
 kinsta wp <site> <command...>    Run a single WP-CLI command via the Kinsta API (no SSH)
 kinsta fix wp-rocket [site]      Deactivate the wp-rocket PHP 8 fatal, restart PHP, clear cache
+kinsta backup create <site>      Create a manual backup (--tag to label it)
+kinsta clone <site> --name <n>   Clone a site's live environment into a new site
+kinsta domain list <site>        List a site's domains
+kinsta domain add <site> <d...>  Add domain(s) and print the DNS records to set
+kinsta domain records <site> <d> Show a domain's verification and pointing records
+kinsta domain primary <site> <d> Make a domain primary (search-replaces the old URL)
 kinsta delete site <site>        Permanently delete a site (typed confirmation required)
 ```
 
@@ -174,6 +180,21 @@ kinsta ssh <site> --exec "cd <web_root> && tar czf /path/private/files.tar.gz wp
 # download both, then verify: sha256 matches, `tar tzf` lists, and the dump ends
 # with "-- Dump completed on ..."
 ```
+
+### Launching a site from a template
+
+```bash
+kinsta backup create template-site --tag pre-clone
+kinsta clone template-site --name "Client Name"        # waits, then prints the new site
+kinsta domain add clientname client.com www.client.com # prints the DNS records to send
+kinsta domain records clientname client.com            # re-print them later
+kinsta domain primary clientname client.com            # once DNS is verified
+```
+
+`clone` needs an exact source match and refuses a display name already in use, so
+re-running it after a slow clone does not start a second copy. `domain add` adds
+each domain without a wildcard; Kinsta rejects its `add_with_www_subdomain` flag on
+a wildcardless domain, so pass `www.` as its own domain.
 
 ## SSH host-key verification
 
