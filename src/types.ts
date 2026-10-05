@@ -134,4 +134,6 @@ export interface DomainRecords {
 export interface OperationStatus {
   status: number;
   message: string;
+  /** On failure, the real reason; `message` is then a generic "Operation failed!". */
+  data?: { message?: string } | null;
 }

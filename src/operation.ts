@@ -32,7 +32,8 @@ export async function awaitOperation(
     );
   }
   if (result.status < 200 || result.status >= 300) {
-    throw new OperationFailedError(`${label}: failed (${result.status}) — ${result.message}`);
+    const reason = result.data?.message ?? result.message;
+    throw new OperationFailedError(`${label}: failed (${result.status}) — ${reason}`);
   }
   console.log(pc.green("✓") + ` ${label} ` + pc.dim(result.message));
 }

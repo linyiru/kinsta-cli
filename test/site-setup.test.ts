@@ -200,6 +200,21 @@ describe("domain commands", () => {
     expect(body).toEqual({ domain_id: "d-main", run_search_and_replace: true });
   });
 
+  it("reports the nested reason when adding a domain fails", async () => {
+    server.use(
+      http.get(`${BASE}/operations/:id`, () =>
+        HttpResponse.json({
+          status: 500,
+          message: "Operation failed! Please refer to `data` for more details.",
+          data: { status: 500, message: 'This domain "example.com" is already in use', data: null },
+        }),
+      ),
+    );
+    await expect(domainAddCommand(makeClient(), "bravosite", ["example.com"])).rejects.toThrow(
+      'This domain "example.com" is already in use',
+    );
+  });
+
   it("refuses a domain the site does not have", async () => {
     await expect(
       domainPrimaryCommand(makeClient(), "bravosite", "example.com"),
