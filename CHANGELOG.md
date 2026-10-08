@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `kinsta backup create <site>` — manual backup of the live environment.
+- `kinsta clone <site> --name <display-name>` — clone a site into a new one,
+  wait for it, and print the new site's name, env id and temporary domain.
+- `kinsta domain list|add|records|primary` — add domains, print the DNS
+  verification and pointing records, and switch the primary domain.
+
 ## [0.3.0] - 2026-08-21
 
 ### Added

@@ -110,8 +110,30 @@ export interface UsageSummary {
   cdnBandwidth: number;
 }
 
+/** An entry of GET /sites/environments/{env_id}/domains. */
+export interface SiteDomain {
+  id: string;
+  name: string;
+  uses_cloudflare_dns: boolean;
+}
+
+/** A DNS record Kinsta asks for, to verify or to point a site domain. */
+export interface DnsRecord {
+  name: string;
+  value: string;
+  type: string;
+}
+
+/** Response of GET /sites/environments/domains/{site_domain_id}/verification-records */
+export interface DomainRecords {
+  verification_records: DnsRecord[];
+  pointing_records: DnsRecord[];
+}
+
 /** Response of GET /operations/{operation_id} (status 202 = still running). */
 export interface OperationStatus {
   status: number;
   message: string;
+  /** On failure, the real reason; `message` is then a generic "Operation failed!". */
+  data?: { message?: string } | null;
 }
